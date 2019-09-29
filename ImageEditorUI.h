@@ -30,6 +30,18 @@ private slots:
 
     void on_quantizeButton_pressed();
 
+    void on_showHistButton_pressed();
+
+    void on_brightnessButton_pressed();
+
+    void on_contrastButton_pressed();
+
+    void on_eqHistButton_pressed();
+
+    void on_matchHistButton_pressed();
+
+    void on_zoomOutButton_pressed();
+
 private:
     Ui::ImageEditorUI *ui;
     QPixmap originalImage;

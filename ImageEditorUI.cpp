@@ -1,8 +1,9 @@
+#include <QFileDialog>
+#include <cstring>
+#include <cmath>
 #include "ImageEditorUI.h"
 #include "ui_ImageEditorUI.h"
-#include <QFileDialog>
 #include "ImageManager.h"
-#include <cstring>
 
 
 ImageEditorUI::ImageEditorUI(QWidget *parent) :
@@ -32,8 +33,10 @@ void ImageEditorUI::on_openButton_pressed()
         {
             oLabel = new QLabel();
             oLabel->show();
+            oLabel->setWindowTitle("Original Image");
         }
         oLabel->setPixmap(originalImage);
+        oLabel->resize(originalImageObj->width(),originalImageObj->height());
         oLabel->update();
     }
 }
@@ -64,8 +67,10 @@ void ImageEditorUI::on_copyButton_pressed()
         {
             nLabel = new QLabel();
             nLabel->show();
+            nLabel->setWindowTitle("Edited Image");
         }
         nLabel->setPixmap(newImage);
+        nLabel->resize(originalImageObj->width(),originalImageObj->height());
         nLabel->update();
         isGrayscale = false;
     }
@@ -84,15 +89,7 @@ void ImageEditorUI::on_convertButton_pressed()
             break;
 
         case 2: //negative
-
-            break;
-
-        case 3: //contrast
-
-            break;
-
-        case 4: //brightness
-
+            negative(*newImageObj);
             break;
 
         default:
@@ -127,6 +124,81 @@ void ImageEditorUI::on_quantizeButton_pressed()
         quantize(*newImageObj, ui->shadesBox->value());
         newImage = QPixmap::fromImage(*newImageObj);
         nLabel->setPixmap(newImage);
+        nLabel->update();
+    }
+}
+
+void ImageEditorUI::on_showHistButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        makeHistogram(*newImageObj, isGrayscale);
+    }
+}
+
+void ImageEditorUI::on_brightnessButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        adjust(*newImageObj, ui->brightBox->value(), true);
+        newImage = QPixmap::fromImage(*newImageObj);
+        nLabel->setPixmap(newImage);
+        nLabel->update();
+    }
+}
+
+void ImageEditorUI::on_contrastButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        adjust(*newImageObj, ui->contrastBox->value(), false);
+        newImage = QPixmap::fromImage(*newImageObj);
+        nLabel->setPixmap(newImage);
+        nLabel->update();
+    }
+}
+
+void ImageEditorUI::on_eqHistButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        if (isGrayscale)
+            equalizeHistogram(*newImageObj);
+        else
+            equalizeColorHistogram(*newImageObj);
+        newImage = QPixmap::fromImage(*newImageObj);
+        nLabel->setPixmap(newImage);
+        nLabel->update();
+    }
+}
+
+void ImageEditorUI::on_matchHistButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        QString imagePath = QFileDialog::getOpenFileName(this,tr("Select target image"),"",tr("JPEG (*.jpg *.jpeg)"));
+
+        if (imagePath != nullptr)
+        {
+            QImage* target = new QImage();
+            target->load(imagePath);
+
+            histogramMatching(*newImageObj, *target, isGrayscale);
+            newImage = QPixmap::fromImage(*newImageObj);
+            nLabel->setPixmap(newImage);
+            nLabel->update();
+        }
+    }
+}
+
+void ImageEditorUI::on_zoomOutButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        zoomOut(*newImageObj, ui->out1->value(), ui->out2->value());
+        newImage = QPixmap::fromImage(*newImageObj);
+        nLabel->setPixmap(newImage);
+        nLabel->resize(newImageObj->width(),newImageObj->height());
         nLabel->update();
     }
 }
