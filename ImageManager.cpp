@@ -27,39 +27,78 @@ void greyscale(QImage& image) // Converte todos os pixels da imagem para a escal
     }
 }
 
-void flip(QImage& image, bool isHorizontal) // Função que realiza o espelhamento
+void flip(QImage& image, short int typeOfFlip) // Função que realiza o espelhamento/rotação
 {
-    if(isHorizontal) // Se o espelhamento é horizontal
+    switch(typeOfFlip) // Se o espelhamento é horizontal
     {
-        for (int row = 0; row<image.height(); row++)
+    case 1:
+        horizontalFlip(image);
+        break;
+    case 2:
+        verticalFlip(image);
+        break;
+    case 3:
+        rotate(image, true);
+        break;
+    case 4:
+        rotate(image, false);
+        break;
+    default:
+        break;
+    }
+}
+
+void horizontalFlip(QImage& image)
+{
+    for (int row = 0; row<image.height(); row++)
+    {
+        uchar* scanUchar = image.scanLine(row);
+        QRgb* scan = reinterpret_cast<QRgb*>(scanUchar);
+        for (int column = 0; column < floor(image.width()/2); column++)
         {
-            uchar* scanUchar = image.scanLine(row);
-            QRgb* scan = reinterpret_cast<QRgb*>(scanUchar);
-            for (int column = 0; column < floor(image.width()/2); column++)
-            {
-                  QRgb aux = (QRgb)(*(scan + column)); // Faz uma troca dos pixels um a um
-                  *(scan + column) = (QRgb)(*(scan + image.width() - column - 1));
-                  *(scan + image.width() - column - 1) = aux;
-            }
+              QRgb aux = (QRgb)(*(scan + column)); // Faz uma troca dos pixels um a um
+              *(scan + column) = (QRgb)(*(scan + image.width() - column - 1));
+              *(scan + image.width() - column - 1) = aux;
         }
     }
-    else // Se o espelhamento é vertical
+}
+
+void verticalFlip(QImage& image)
+{
+    for (int row = 0; row<floor(image.height()/2); row++)
     {
-        for (int row = 0; row<floor(image.height()/2); row++)
+        uchar* scan = image.scanLine(row);
+        uchar* scanLow = image.scanLine(image.height() - row - 1);
+        void* aux;
+
+        aux = malloc((size_t)(4*image.width()*sizeof(uchar)));
+
+        memcpy(aux, scan, (4*image.width()*sizeof(uchar))); // Troca linhas inteiras com memcpy
+        memcpy(scan, scanLow, (4*image.width()*sizeof(uchar)));
+        memcpy(scanLow, aux, (4*image.width()*sizeof(uchar)));
+
+        free(aux);
+    }
+}
+
+void rotate(QImage& image, bool isClockwise)
+{
+    QImage newImage = QPixmap(image.height(), image.width()).toImage();
+
+    for (int row = 0; row < image.height(); row++)
+    {
+        uchar* scan = image.scanLine(row);
+
+        for (int column = 0; column < image.width(); column++)
         {
-            uchar* scan = image.scanLine(row);
-            uchar* scanLow = image.scanLine(image.height() - row - 1);
-            void* aux;
-
-            aux = malloc((size_t)(4*image.width()*sizeof(uchar)));
-
-            memcpy(aux, scan, (4*image.width()*sizeof(uchar))); // Troca linhas inteiras com memcpy
-            memcpy(scan, scanLow, (4*image.width()*sizeof(uchar)));
-            memcpy(scanLow, aux, (4*image.width()*sizeof(uchar)));
-
-            free(aux);
+              QRgb* pixel = reinterpret_cast<QRgb*>(scan + column*4);
+              if (isClockwise)
+                  newImage.setPixel(image.height()-row, column, QColor(qRed(*pixel), qGreen(*pixel), qBlue(*pixel)).rgb());
+              else
+                  newImage.setPixel(row, image.width()-column, QColor(qRed(*pixel), qGreen(*pixel), qBlue(*pixel)).rgb());
         }
     }
+    image = newImage;
 }
 
 void quantize(QImage& image, int shades) // Quantiza a imagem em escala cinza para ter um dado número de tons
@@ -86,18 +125,20 @@ void quantize(QImage& image, int shades) // Quantiza a imagem em escala cinza pa
 void makeHistogram(QImage& image, int isGrayScale)
 {
     int numberOfPixels = image.width()*image.height();
-    int histogram[256] = {0};
+
+    int histogram[256];
 
     if (isGrayScale)
-        calculateGrayHistogram(image, histogram, true);
+        calculateHistogram(image, histogram, true);
     else
-        calculateGrayHistogram(image, histogram, false);
+        calculateHistogram(image, histogram, false);
 
     showHistogram(numberOfPixels, histogram, QColor (0, 0, 0));
 }
 
-void calculateGrayHistogram(QImage& image, int histogram[256], bool isGrayscale)
+void calculateHistogram(QImage& image, int histogram[256], bool isGrayscale)
 {
+
     for (int i = 0; i < 256; i++)
         histogram[i] = 0;
 
@@ -120,7 +161,7 @@ void showHistogram(int numPixels, int histogram[256], QColor color)
 {
     QColor bg (255,255,255);
 
-    float alpha = 255.0 / numPixels;
+    float alpha = 255.0 / *std::max_element(histogram,histogram+256);
 
     QImage hist = QPixmap(256, 256).toImage();
 
@@ -131,7 +172,7 @@ void showHistogram(int numPixels, int histogram[256], QColor color)
 
     for (int i = 0; i < 256; i++)
     {
-        normalizedHistogram[i] = histogram[i]*alpha;
+        normalizedHistogram[i] = ceil(histogram[i]*alpha);
     }
 
     for (int row = 0; row < 256; row++)
@@ -211,10 +252,7 @@ void equalizeHistogram(QImage& image)
 {
     int histogram[256];
 
-    for (int i = 0; i < 256; i++)
-        histogram[i] = 0;
-
-    calculateGrayHistogram(image, histogram, true);
+    calculateHistogram(image, histogram, true);
 
     int cumulativeHistogram[256];
     memcpy(cumulativeHistogram, histogram, 256*sizeof(int));
@@ -257,7 +295,7 @@ void equalizeColorHistogram(QImage& image)
     for (int i = 0; i < 256; i++)
         histogram[i] = 0;
 
-    calculateGrayHistogram(image, histogram, false);
+    calculateHistogram(image, histogram, false);
 
     int cumulativeHistogram[256];
     memcpy(cumulativeHistogram, histogram, 256*sizeof(int));
@@ -296,8 +334,13 @@ void histogramMatching(QImage& src, QImage& target, bool isGrayscale)
         histTarget[i] = 0;
     }
 
-    calculateGrayHistogram(src, histSrc, false);
-    calculateGrayHistogram(target, histTarget, isGrayscale);
+    greyscale(target);
+
+    if (!isGrayscale)
+        greyscale(src);
+
+    calculateHistogram(src, histSrc, true);
+    calculateHistogram(target, histTarget, true);
 
     memcpy(cumulativeHistSrc, histSrc, 256*sizeof(int));
     makeCumulative(cumulativeHistSrc);
@@ -325,7 +368,7 @@ void histogramMatching(QImage& src, QImage& target, bool isGrayscale)
 int closestPosition(int src, int array[], int tam)
 {
     int closest = 0;
-    int diff = 2000;
+    int diff = INT_MAX;
 
     for (int i = 0; i < tam; i++)
     {
@@ -371,4 +414,105 @@ void zoomOut(QImage& image, int sx, int sy)
     }
 
     image = zoomed;
+}
+
+void zoomIn(QImage& image)
+{
+
+    QImage zoomed = QPixmap(image.width()*2, image.height()*2).toImage();
+
+    for (int row = 0; row < image.height(); row++)
+    {
+        uchar* scan = image.scanLine(row);
+
+        for (int column = 0; column < image.width(); column++)
+        {
+            QRgb* pixel = reinterpret_cast<QRgb*>(scan + column*4);
+
+            int red = qRed(*pixel);
+            int green = qGreen(*pixel);
+            int blue = qBlue(*pixel);
+
+            zoomed.setPixel(column*2, row*2, QColor(qRed(*pixel), qGreen(*pixel), qBlue(*pixel)).rgb());
+
+            if (column+1 < image.width())
+            {
+                QRgb* nextPixel = reinterpret_cast<QRgb*>(scan + (column+1)*4);
+                red = round((red + qRed(*nextPixel))/2);
+                green = round((green + qGreen(*nextPixel))/2);
+                blue = round((blue + qBlue(*nextPixel))/2);
+
+                red = (red < 0 ? 0 : (red > 255 ? 255 : red));
+                green = (green < 0 ? 0 : (green > 255 ? 255 : green));
+                blue = (blue < 0 ? 0 : (blue > 255 ? 255 : blue));
+            }
+
+            zoomed.setPixel((column*2)+1,row*2, QColor(red, green, blue).rgb());
+        }
+    }
+
+    for (int row = 1; (row+1) < zoomed.height(); row+=2)
+    {
+        for (int column = 0; column < zoomed.width(); column++)
+        {
+
+            QColor pixelAbove = zoomed.pixel(column, row-1);
+
+            int red = pixelAbove.red();
+            int green = pixelAbove.green();
+            int blue = pixelAbove.blue();
+
+            if (row + 1 < zoomed.height())
+            {
+                QColor pixelBelow = zoomed.pixel(column, row+1);
+                red = round((red + pixelBelow.red())/2);
+                green = round((green + pixelBelow.green())/2);
+                blue = round((blue + pixelBelow.blue())/2);
+
+                red = (red < 0 ? 0 : (red > 255 ? 255 : red));
+                green = (green < 0 ? 0 : (green > 255 ? 255 : green));
+                blue = (blue < 0 ? 0 : (blue > 255 ? 255 : blue));
+
+            }
+
+            zoomed.setPixel(column, row, QColor(red, green, blue).rgb());
+        }
+    }
+
+    image = zoomed;
+}
+
+void convolution(QImage& image, double kernel[3][3])
+{
+    QImage newImage = QPixmap(image.width()-1, image.height()-1).toImage();
+
+    for (int row = 1; row < image.height(); row++)
+    {
+        uchar* scan = image.scanLine(row);
+
+        for (int column = 1; column < image.width(); column++)
+        {
+            int red = 0, green = 0, blue = 0;
+
+            for(int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    QRgb* curPixel = reinterpret_cast<QRgb*>(scan + (i-1)*(4*sizeof(uchar)*image.width()) + (column+j-1)*4);
+                    red += kernel[i][j]*qRed(*curPixel);
+                    green += kernel[i][j]*qGreen(*curPixel);
+                    blue += kernel[i][j]*qBlue(*curPixel);
+                }
+            }
+
+            red = (red < 0 ? 0 : (red > 255 ? 255 : red));
+            green = (green < 0 ? 0 : (green > 255 ? 255 : green));
+            blue = (blue < 0 ? 0 : (blue > 255 ? 255 : blue));
+
+            newImage.setPixel(column, row, QColor(red, green, blue).rgb());
+
+        }
+    }
+
+    image = newImage;
 }

@@ -18,6 +18,8 @@ public:
     ~ImageEditorUI();
 
 private slots:
+    void updateImage();
+
     void on_openButton_pressed();
 
     void on_saveButton_pressed();
@@ -25,6 +27,14 @@ private slots:
     void on_copyButton_pressed();
 
     void on_convertButton_pressed();
+
+    void on_horizontalButton_clicked();
+
+    void on_verticalButton_clicked();
+
+    void on_clockButton_clicked();
+
+    void on_anticlockButton_clicked();
 
     void on_flipButton_pressed();
 
@@ -42,6 +52,10 @@ private slots:
 
     void on_zoomOutButton_pressed();
 
+    void on_zoomInButton_pressed();
+
+    void on_filterButton_clicked();
+
 private:
     Ui::ImageEditorUI *ui;
     QPixmap originalImage;
@@ -51,6 +65,7 @@ private:
     QLabel *oLabel = nullptr;
     QLabel *nLabel = nullptr;
     bool isGrayscale = false;
+    short int typeOfFlip = 0;
 };
 
 #endif // MAINWINDOW_H

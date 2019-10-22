@@ -1,6 +1,7 @@
 #include <QFileDialog>
 #include <cstring>
 #include <cmath>
+#include <numeric>
 #include "ImageEditorUI.h"
 #include "ui_ImageEditorUI.h"
 #include "ImageManager.h"
@@ -16,6 +17,14 @@ ImageEditorUI::ImageEditorUI(QWidget *parent) :
 ImageEditorUI::~ImageEditorUI()
 {
     delete ui;
+}
+
+void ImageEditorUI::updateImage()
+{
+    newImage = QPixmap::fromImage(*newImageObj);
+    nLabel->setPixmap(newImage);
+    nLabel->resize(newImageObj->width(),newImageObj->height());
+    nLabel->update();
 }
 
 void ImageEditorUI::on_openButton_pressed()
@@ -69,9 +78,7 @@ void ImageEditorUI::on_copyButton_pressed()
             nLabel->show();
             nLabel->setWindowTitle("Edited Image");
         }
-        nLabel->setPixmap(newImage);
-        nLabel->resize(originalImageObj->width(),originalImageObj->height());
-        nLabel->update();
+        updateImage();
         isGrayscale = false;
     }
 
@@ -98,21 +105,36 @@ void ImageEditorUI::on_convertButton_pressed()
 
         }
 
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->update();
+        updateImage();
     }
+}
+
+void ImageEditorUI::on_horizontalButton_clicked()
+{
+    typeOfFlip = 1;
+}
+
+void ImageEditorUI::on_verticalButton_clicked()
+{
+    typeOfFlip = 2;
+}
+
+void ImageEditorUI::on_clockButton_clicked()
+{
+    typeOfFlip = 3;
+}
+
+void ImageEditorUI::on_anticlockButton_clicked()
+{
+    typeOfFlip = 4;
 }
 
 void ImageEditorUI::on_flipButton_pressed()
 {
-
-    if(newImageObj!=nullptr && (ui->horizontalButton->isChecked() || ui->verticalButton->isChecked()))
-    {
-        flip(*newImageObj, ui->horizontalButton->isChecked());
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->update();
+    if(newImageObj!=nullptr && typeOfFlip != 0)
+    {  
+        flip(*newImageObj, typeOfFlip);
+        updateImage();
     }
 }
 
@@ -122,9 +144,7 @@ void ImageEditorUI::on_quantizeButton_pressed()
     if(newImageObj!=nullptr && isGrayscale && (ui->shadesBox->value() > 0))
     {
         quantize(*newImageObj, ui->shadesBox->value());
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->update();
+        updateImage();
     }
 }
 
@@ -141,9 +161,7 @@ void ImageEditorUI::on_brightnessButton_pressed()
     if(newImageObj!=nullptr)
     {
         adjust(*newImageObj, ui->brightBox->value(), true);
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->update();
+        updateImage();
     }
 }
 
@@ -152,9 +170,7 @@ void ImageEditorUI::on_contrastButton_pressed()
     if(newImageObj!=nullptr)
     {
         adjust(*newImageObj, ui->contrastBox->value(), false);
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->update();
+        updateImage();
     }
 }
 
@@ -166,9 +182,7 @@ void ImageEditorUI::on_eqHistButton_pressed()
             equalizeHistogram(*newImageObj);
         else
             equalizeColorHistogram(*newImageObj);
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->update();
+        updateImage();
     }
 }
 
@@ -184,9 +198,8 @@ void ImageEditorUI::on_matchHistButton_pressed()
             target->load(imagePath);
 
             histogramMatching(*newImageObj, *target, isGrayscale);
-            newImage = QPixmap::fromImage(*newImageObj);
-            nLabel->setPixmap(newImage);
-            nLabel->update();
+            updateImage();
+            isGrayscale = true;
         }
     }
 }
@@ -196,9 +209,40 @@ void ImageEditorUI::on_zoomOutButton_pressed()
     if(newImageObj!=nullptr)
     {
         zoomOut(*newImageObj, ui->out1->value(), ui->out2->value());
-        newImage = QPixmap::fromImage(*newImageObj);
-        nLabel->setPixmap(newImage);
-        nLabel->resize(newImageObj->width(),newImageObj->height());
-        nLabel->update();
+        updateImage();
     }
 }
+
+void ImageEditorUI::on_zoomInButton_pressed()
+{
+    if(newImageObj!=nullptr)
+    {
+        zoomIn(*newImageObj);
+        updateImage();
+    }
+}
+
+void ImageEditorUI::on_filterButton_clicked()
+{
+    if(newImageObj!=nullptr)
+    {
+        double kernel[3][3];
+
+        kernel[2][0] = ui->filter1->value();
+        kernel[1][0] = ui->filter2->value();
+        kernel[0][0] = ui->filter3->value();
+        kernel[2][1] = ui->filter4->value();
+        kernel[1][1] = ui->filter5->value();
+        kernel[0][1] = ui->filter6->value();
+        kernel[2][2] = ui->filter7->value();
+        kernel[1][2] = ui->filter8->value();
+        kernel[2][2] = ui->filter9->value();
+
+        convolution(*newImageObj, kernel);
+
+        updateImage();
+    }
+}
+
+
+
